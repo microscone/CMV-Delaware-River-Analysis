@@ -1,0 +1,223 @@
+---
+title: "AIS-Delaware-Ship-Traffic-R_Markdown-8-23-2019_V2"
+author: "Shane Cone @Microscone"
+date: "8/26/2019"
+output:
+  html_document: default
+---
+
+##Dependencies:
+AIS_2017_06_Zone18.csv
+VesselTypeCodes.csv
+
+```{r}
+setwd("D:\\DAQ\\CMV-AIS")
+getwd()
+```
+
+
+```{r}
+#install.packages("dplyr")
+#install.packages("lubridate")
+#install.packages("magrittr")
+#install.packages("forcats")
+#install.packages("lubridate")
+#install.packages("OpenStreetMap")
+#install.packages("tidyverse")
+#install.packages("rlang")
+#install.packages("rmarkdown")
+library(rmarkdown)
+library(stringi)
+library(knitr)
+library(rlang)
+library(dplyr)
+library(lubridate)
+library(tidyverse)
+```
+
+Read the file for June 2017
+
+
+```{r}
+a <- read.csv("AIS_2017_06_Zone18.csv")
+```
+
+View details of data file. **An important find here is under Draft!** There are 35 million observations (records), but ~24 million draft records are NA!
+
+Also, a note on inter-month differences.. The January, 2017 file contains ~24 million records, whereas this June file containes ~35 million records. 
+
+```{r}
+str(a)
+summary(a)
+sum(is.na(a$MMSI))
+sum(is.na(a$IMO))
+```
+
+**These figures and results below are from the January 2017 month analysis. 
+###January 2017
+The following code looks at MMSI vs IMO. There are 3727 unique MMSI codes, and 35 of them are "0" (no NULL in field, according to above results, but there are 0's!).
+
+For IMO#, there are 1993 unique IMO numbers, and no "NULLS" and no 0's. However, it is a factor, and includes a blank level, with, according to the table, 9,336,777 records as blank!
+
+Therefore, MMSI is the best/most complete identifier of ships, by far.
+
+###June 2017
+For the June 2017 analysis, there are no "0" records for either field, however, a very large number of the IMO records are blank.
+
+```{r}
+length(unique(a$MMSI))
+sum(a$MMSI == 0)
+length(unique(a$IMO))
+sum(a$IMO == 0)
+sum(a$IMO == "")
+## the below lines of codes print all of the levels for ...$IMO field. I printed them to take a peak, but it't not very helfpul
+##table(a$IMO)
+```
+
+
+## Data prep and subsetting based on location
+Define the data preperation function
+
+```{R}
+data.prep <- function(data, lower, upper, left, right, NULL.A){
+b <- subset(a, a$LAT >= lower & LAT <= upper & LON <= right & LON >= left)
+print("Taking the absolute value of SOG...")
+b$SOG <- abs(b$SOG)
+print("Formatting date-time records...")
+b$BaseDateTime <- ymd_hms(b$BaseDateTime)
+b$Day <- day(b$BaseDateTime)
+b$wDay <- wday(b$BaseDateTime)
+region <<- b
+print("data prep complete")
+}
+```
+
+```{R}
+##THIS SECTION IS CURRENTLY UNDER CONSTRUCTION. PLEASE MOVE ALONG
+
+##had to install, set up, and create API key for this step, as google has put a LOCK on it's maps...
+##If this section does not work, sorry!
+#AIS_Polygon  <- read.csv("AIS GPS Selection.csv")
+
+#library(OpenStreetMap)
+#Delaware <- c(lon = -75.77944444, lat = 38.71333333)
+
+# Get map at zoom level 5: map_5
+#map_DE <- openmap(location = Delaware, source = "stamen", zoom = 5, scale = 1)
+#plot(map_DE)
+
+# Plot map at zoom level 3
+#ggmap(map_5)
+```
+
+Conduct data prep on full dataset
+
+```{R}
+data.prep(data = a, lower = 38.71333333, upper = 39.80638889, left = -75.77944444, right = -75.035110
+, NULL.A = FALSE)
+Delaware_Riv <- region
+region <- NULL
+Delaware_Riv$region <- "Delaware River"
+write.csv(Delaware_Riv, "AIS_limited_Delaware_Riv.csv")
+Delaware_Riv_Ais_full <- read.csv("AIS_limited_Delaware_Riv.csv"
+)
+```
+
+##Delaware Specific data
+View geo-relevent data that you selected in the data prep step. Once again, as is seen in the summary section for draft, a significant number (about half) of the records for Draft are Null.
+
+```{R}
+head(Delaware_Riv_Ais_full)
+str(Delaware_Riv_Ais_full)
+summary(Delaware_Riv_Ais_full)
+```
+
+Change file data types as appropriate
+
+```{R}
+Delaware_Riv_Ais_full$VesselType <- as.factor(Delaware_Riv_Ais_full$VesselType)
+levels(Delaware_Riv_Ais_full$VesselType)
+Delaware_Riv_Ais_full$MMSI <- as.factor(Delaware_Riv_Ais_full$MMSI)
+Delaware_Riv_Ais_full$wDay <- as.factor(Delaware_Riv_Ais_full$wDay)
+str(Delaware_Riv_Ais_full)
+```
+
+Read CSV of vessel type codes
+
+```{r}
+VesselTypeCodes <- read.csv("VesselTypeCodes.csv")
+VesselTypeCodes$Vessel.Code  <- as.factor(VesselTypeCodes$Vessel.Code)
+str(VesselTypeCodes)
+VesselTypeCodes
+```
+
+The code below joins the Delaware vessel dataset and the Vessel type codes dataset, in order to name the vessel types. *There was an issue with joining where some records were lost, though. Need to figure out why.*
+
+```{r}
+Delaware_Riv_Ais_full_joined  <- inner_join(Delaware_Riv_Ais_full, VesselTypeCodes, by =c("VesselType" = "Vessel.Code"))
+```
+
+```{r}
+str(Delaware_Riv_Ais_full_joined)
+head(Delaware_Riv_Ais_full_joined, 10)
+```
+
+#Visualizations and EDA
+```{r}
+ggplot(Delaware_Riv_Ais_full, aes(region, SOG))+
+geom_boxplot(aes(fill = region))+
+ggtitle("January 2017 Speed-Over-Ground - with 0's")+
+theme_minimal()
+```
+
+```{r}
+ggplot(data=subset(Delaware_Riv_Ais_full,SOG != 0), aes(region, SOG))+
+geom_boxplot(aes(fill = region))+
+ggtitle("January 2017 Speed-Over-Ground - without 0's")+
+theme_minimal()
+```
+
+Now we will look at the distribution of ships by ship type in the dataset
+
+```{r}
+library(plyr)
+library(forcats)
+Delaware_Riv_Ais_full_joined %>% dplyr::group_by(fct_explicit_na(AVIS.Vessel.Service)) %>% dplyr::summarise(n = n())
+```
+It looks like the vast majority of records are Towing Vessels, followed by freight ships, passenger ships, and tank ships.
+
+Now I wanted to look at the distribution of individual ship records, and how many counts the most active ships make.
+
+```{r}
+ggplot(Delaware_Riv_Ais_full_joined)+
+geom_bar(aes(x = fct_infreq(AVIS.Vessel.Service)))+
+ggtitle("January 2017 Counts by Ship Type")+
+theme_minimal()+
+theme(axis.text.x = element_text(angle = 90))+
+xlab("Vessel Type")
+```
+
+```{r}
+Delaware_Riv_Ais_full_joined$MMSI  <- as.factor(Delaware_Riv_Ais_full_joined$MMSI)
+Delaware_Riv_Ais_full_joined %>% dplyr::group_by(fct_explicit_na(MMSI)) %>% dplyr::summarize(count=n(), "Vessel Type"= first(AVIS.Vessel.Service)) %>% arrange(desc(count)) %>% head(20)
+
+Delaware_Riv_Ais_full_joined %>% group_by(fct_explicit_na(MMSI)) %>% tally() %>% top_n(10) %>% tally()
+
+```
+
+This shows that the top 10 ships each account for over 30,000 records! This dataset has only `r nrow(Delaware_Riv_Ais_full_joined)` records, and `r Delaware_Riv_Ais_full_joined %>% group_by(fct_explicit_na(MMSI)) %>% tally() %>% top_n(10) %>% tally()` of them, or `r Delaware_Riv_Ais_full_joined %>% group_by(fct_explicit_na(MMSI)) %>% tally() %>% top_n(10) %>% tally() / nrow(Delaware_Riv_Ais_full_joined)*100`% of the records, are made up of only 10 ships' activities
+
+
+
+Now lets view activity by day of the week (where 1 = Sunday)
+
+```{r}
+Delaware_Riv_Ais_full_joined %>% group_by(fct_explicit_na(wDay)) %>% tally()
+
+ggplot(Delaware_Riv_Ais_full_joined)+
+geom_bar(aes(x = Delaware_Riv_Ais_full_joined$wDay))+
+ggtitle("June 2017 Record Counts by day of week")+
+theme_minimal()+
+xlab("Day of Week")
+
+```

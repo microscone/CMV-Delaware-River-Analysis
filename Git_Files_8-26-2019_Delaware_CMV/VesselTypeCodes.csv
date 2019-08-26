@@ -1,0 +1,26 @@
+Vessel Group,Vessel Code,AVIS Vessel Service
+Fishing,1001, Commercial Fishing Vessel
+Fishing,1002, Fish Processing Vessel
+Cargo,1003, Freight Barge
+Cargo,1004, Freight Ship
+Other,1005, Industrial Vessel
+Other,1006, Miscellaneous Vessel
+Other,1007, Mobile Offshore Drilling Unit
+Other,1008, Non - Vessel
+Other,1009, Non - Vessel
+Other,1010, Offshore Supply Vessel
+Other,1011, Oil Recovery
+Passenger,1012, Passenger (Inspected)
+Passenger,1013, Passenger (Uninspected)
+Passenger,1014, Passenger Barge (Inspected)
+Passenger,1015, Passenger Barge (Uninspected)
+Cargo,1016, Public Freight
+Tanker,1017, Public Tankship/Barge
+Other,1018," Public Vessel, Unclassified"
+Pleasure Craft/Sailing,1019, Recreational
+Other,1020, Research Vessel
+Military,1021, SAR Aircraft
+Other,1022, School Ship
+Tug Tow,1023, Tank Barge
+Tanker,1024, Tank Ship
+Tug Tow,1025, Towing Vessel
